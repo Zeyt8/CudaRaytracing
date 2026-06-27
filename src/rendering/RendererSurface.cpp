@@ -1,12 +1,10 @@
-#include "Renderer.h"
+#include "RenderSurface.h"
 
 #include <cuda_gl_interop.h>
 
-#include <iostream>
-
 #include "shader_utils.h"
 
-Renderer::Renderer(int width, int height)
+RenderSurface::RenderSurface(int width, int height)
 {
 	_width = width;
 	_height = height;
@@ -19,12 +17,12 @@ Renderer::Renderer(int width, int height)
 	InitGLResources();
 }
 
-Renderer::~Renderer()
+RenderSurface::~RenderSurface()
 {
 	Cleanup();
 }
 
-void Renderer::Draw()
+void RenderSurface::Draw()
 {
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _pbo);
 
@@ -48,7 +46,7 @@ void Renderer::Draw()
 	glUseProgram(0);
 }
 
-void Renderer::Cleanup()
+void RenderSurface::Cleanup()
 {
 	if (_cudaPBO) {
 		cudaGraphicsUnregisterResource(_cudaPBO);
@@ -72,7 +70,7 @@ void Renderer::Cleanup()
 	}
 }
 
-uchar4* Renderer::MapCudaResource()
+uchar4* RenderSurface::MapCudaResource()
 {
 	cudaGraphicsMapResources(1, &_cudaPBO, 0);
 
@@ -83,12 +81,12 @@ uchar4* Renderer::MapCudaResource()
 	return dptr;
 }
 
-void Renderer::UnmapCudaResource()
+void RenderSurface::UnmapCudaResource()
 {
 	cudaGraphicsUnmapResources(1, &_cudaPBO, 0);
 }
 
-void Renderer::InitGLResources()
+void RenderSurface::InitGLResources()
 {
 	glGenBuffers(1, &_pbo);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _pbo);

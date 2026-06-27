@@ -13,10 +13,12 @@ extern "C" {
 #include <GLFW/glfw3.h>
 
 #include <iostream>
+#include <string>
 #include <chrono>
 
-#include "rendering/Renderer.h"
-#include "raytracing/full_color.h"
+#include "scene/Scene.h"
+#include "rendering/RenderSurface.h"
+#include "rendering/renderers/Raytracer.h"
 
 GLFWwindow* initWindow(int width, int height) {
     glfwInit();
@@ -38,10 +40,15 @@ int main()
     GLFWwindow* window = initWindow(1080, 720);
     cudaSetDevice(0);
 
-    Renderer renderer(1080, 720);
+    Scene scene;
+    scene.AddObject(float3{ 0.0f, -10.3f, 1.0f });
+    scene.AddObject(float3{ 0.0f, -0.1f, 1.0f });
+
+    RenderSurface renderSurface(1080, 720);
+    Raytracer renderer(&scene, 1080, 720);
 
     const GLubyte* r = glGetString(GL_RENDERER);
-    std::cout << "Renderer: " << r << std::endl;
+    std::cout << "GPU: " << r << std::endl;
 
     int frames = 0;
     auto lastTime = std::chrono::high_resolution_clock::now();
@@ -58,19 +65,19 @@ int main()
             lastTime = currentTime;
         }
 
-        uchar4* devPtr = renderer.MapCudaResource();
+        uchar4* devPtr = renderSurface.MapCudaResource();
 
-        full_color(uchar4(0, 255, 255, 255), devPtr);
+        renderer.Draw(devPtr);
 
-        renderer.UnmapCudaResource();
+        renderSurface.UnmapCudaResource();
         glClear(GL_COLOR_BUFFER_BIT);
-        renderer.Draw();
-
+        renderSurface.Draw();
+        
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-    renderer.Cleanup();
+    renderSurface.Cleanup();
     glfwDestroyWindow(window);
     glfwTerminate();
 

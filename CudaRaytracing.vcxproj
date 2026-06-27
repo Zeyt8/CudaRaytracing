@@ -11,17 +11,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\raytracing\full_color.h" />
-    <ClInclude Include="src\rendering\Renderer.h" />
+    <ClInclude Include="src\rendering\renderers\Raytracer.h" />
+    <ClInclude Include="src\rendering\renderers\raytracer_kernels.cuh" />
+    <ClInclude Include="src\rendering\renderers\Renderer.h" />
+    <ClInclude Include="src\rendering\RenderSurface.h" />
     <ClInclude Include="src\rendering\shader_utils.h" />
+    <ClInclude Include="src\scene\Scene.h" />
+    <ClInclude Include="src\utils\float3_helpers.cuh" />
+    <ClInclude Include="src\utils\math_utils.cuh" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\rendering\Renderer.cpp" />
+    <ClCompile Include="src\rendering\RendererSurface.cpp" />
+    <ClCompile Include="src\rendering\renderers\Renderer.cpp" />
     <ClCompile Include="src\rendering\shader_utils.cpp" />
+    <ClCompile Include="src\scene\Scene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="src\main.cu" />
-    <CudaCompile Include="src\raytracing\full_color.cu" />
+    <CudaCompile Include="src\rendering\renderers\Raytracer.cu" />
+    <CudaCompile Include="src\rendering\renderers\raytracer_kernels.cu" />
   </ItemGroup>
   <ItemGroup>
     <None Include="src\shaders\quad.frag" />
@@ -59,6 +67,10 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(ProjectDir)src;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(ProjectDir)src;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnableManifest>true</VcpkgEnableManifest>
@@ -69,6 +81,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -79,6 +92,8 @@
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalCompilerOptions>/Zc:preprocessor</AdditionalCompilerOptions>
       <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
+      <Include>
+      </Include>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -88,6 +103,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -98,6 +114,8 @@
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalCompilerOptions>/Zc:preprocessor</AdditionalCompilerOptions>
+      <AdditionalOptions>-std=c++20 %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

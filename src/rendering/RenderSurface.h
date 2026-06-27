@@ -4,10 +4,10 @@
 
 #include <GL/glew.h>
 
-class Renderer {
+class RenderSurface {
 public:
-	Renderer(int width, int height);
-	~Renderer();
+	RenderSurface(int width, int height);
+	~RenderSurface();
 
 	void Draw();
 	void Cleanup();
