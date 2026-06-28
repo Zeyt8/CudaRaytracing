@@ -31,14 +31,8 @@ __host__ __device__ inline float3 randomUnitVector(uint32_t& state) {
 
 __device__ __host__ inline float3 randomOnHemisphere(const float3& normal, uint32_t& state) {
     float3 on_unit_sphere = randomUnitVector(state);
-    if (dot(on_unit_sphere, normal) > 0.0)
-    {
-        return on_unit_sphere;
-    }
-    else
-    {
-        return -on_unit_sphere;
-    }
+    bool b = (dot(on_unit_sphere, normal) > 0.0);
+    return on_unit_sphere * (b - !b);
 }
 
 __device__ __host__ inline float3 randomInUnitDisk(uint32_t state) {
@@ -47,7 +41,7 @@ __device__ __host__ inline float3 randomInUnitDisk(uint32_t state) {
         p = p * 2;
         if (lengthSquared(p) < 1)
         {
-            return p;
+            return p * (lengthSquared(p) < 1);
         }
     }
 }

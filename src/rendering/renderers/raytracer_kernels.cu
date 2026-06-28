@@ -1,5 +1,7 @@
 #include "raytracer_kernels.cuh"
 
+#include <cuda_tile.h>
+
 #include <cstdint>
 #include <cfloat>
 
@@ -24,20 +26,13 @@ __global__ void k_setPixelCenterAndDir(int width, int height, float3 pixel100Loc
     rayDirs[idx(x, y, width)] = rayDir;
 }
 
-__device__ float hit_sphere(const float3& center, double radius, const float3& rayCenter, const float3& rayDir) {
+__device__ float hit_sphere(const float3& center, float radius, const float3& rayCenter, const float3& rayDir) {
     float3 oc = center - rayCenter;
     float a = lengthSquared(rayDir);
     float h = dot(rayDir, oc);
     float c = lengthSquared(oc) - radius * radius;
     float discriminant = h * h - a * c;
-    if (discriminant < 0)
-    {
-        return -1.0f;
-    }
-    else
-    {
-        return (h - sqrtf(discriminant)) / a;
-    }
+    return (discriminant < 0) * -1 + (discriminant >= 0) * (h - sqrtf(discriminant)) / a;
 }
 
 struct HitInfo
@@ -51,11 +46,13 @@ __constant__ float scales[6] = { 20.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f };
 
 __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& sceneInfo, uint32_t& state, HitInfo& hitInfo)
 {
+    namespace ct = cuda::tiles;
+
     hitInfo.hit = false;
 
     int closestHitObj = -1;
     float closestP = FLT_MAX;
-    for (int i = 0; i < sceneInfo.objCount; i++)
+    for (auto i : ct::irange(0, sceneInfo.objCount))
     {
         float p = hit_sphere(sceneInfo.objects[i], scales[i], rayOrigin, rayDir);
         if (p > 0 && p < closestP)
@@ -126,7 +123,10 @@ __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& 
     }
 }
 
-__global__ void k_raytrace(float3 rayOrigin, float3* __restrict__ rayDirs, RenderingInfo renderingInfo, SceneInfo sceneInfo, uint32_t initState, uchar4* __restrict__ buffer) {
+__global__ void k_raytrace(float3 rayOrigin, float3* __restrict__ rayDirs, RenderingInfo renderingInfo, SceneInfo sceneInfo, uint32_t initState, uchar4* __restrict__ buffer)
+{
+    namespace ct = cuda::tiles;
+
     int x = blockIdx.x * blockDim.x + threadIdx.x;
     int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -134,10 +134,11 @@ __global__ void k_raytrace(float3 rayOrigin, float3* __restrict__ rayDirs, Rende
 
     float3 color = float3(0, 0, 0);
     uint32_t state = initState + x + y * renderingInfo.width;
+    float3 initialRayDir = rayDirs[idx(x, y, renderingInfo.width)];
 
-    for (int i = 0; i < renderingInfo.sampleCount; i++)
+    for (auto i : ct::irange(0, renderingInfo.sampleCount))
     {
-        float3 rayDir = rayDirs[idx(x, y, renderingInfo.width)];
+        float3 rayDir = initialRayDir;
         rayDir.x += ((float)getRandom(state) / UINT32_MAX - 0.5f) * renderingInfo.pixelDeltaU.x;
         rayDir.y += ((float)getRandom(state) / UINT32_MAX - 0.5f) * renderingInfo.pixelDeltaV.y;
         float3 randomInDisk = randomInUnitDisk(state);
@@ -146,7 +147,7 @@ __global__ void k_raytrace(float3 rayOrigin, float3* __restrict__ rayDirs, Rende
 
         HitInfo hitInfo;
         float3 accColor = getRayColor(rayOrigin + focusShift, rayDir, sceneInfo, state, hitInfo);
-        for (int depth = 0; depth < 50; depth++)
+        for(auto depth : ct::irange(0, 50))
         {
             if (!hitInfo.hit) break;
             accColor = accColor * getRayColor(hitInfo.o, hitInfo.d, sceneInfo, state, hitInfo);
