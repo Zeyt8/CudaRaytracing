@@ -47,10 +47,14 @@ int main()
     scene.AddMaterial(Material(float4(1, 0.1f, 0.1f, 1), 0.5f, 0, 0));
     scene.AddMaterial(Material(float4(0.1f, 1, 0.1f, 1), 0.0f, 0, 0));
     scene.AddMaterial(Material(float4(1, 1, 1, 1), 0.0f, 0, 1.33f));
+    scene.AddMaterial(Material(float4(1, 0, 0, 1), 0.5f, 0.0f, 0));
+    scene.AddMaterial(Material(float4(1, 1, 1, 1), 0.8f, 0, 1.1f));
     scene.AddObject(float3(0.0f, -20.2f, 1.0f), 0);
     scene.AddObject(float3(0.0f, 0, 1.0f), 1);
     scene.AddObject(float3(0.5f, 0, 1.0f), 2);
     scene.AddObject(float3(-0.2f, 0, 0.7f), 3);
+    scene.AddObject(float3(-0.5f, 0, 1), 4);
+    scene.AddObject(float3(0.2f, 0, 0.7f), 5);
 
     RenderSurface renderSurface(width, height);
     Raytracer renderer(&scene, width, height, Camera(float3(0, 0.75f, 0), float3(0, -1, 1), float3(0, 1, 1), 1.25f, 90, 2));

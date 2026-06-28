@@ -47,7 +47,7 @@ struct HitInfo
     float3 d;
 };
 
-__constant__ float scales[4] = { 20.0f, 0.2f, 0.2f, 0.2f };
+__constant__ float scales[6] = { 20.0f, 0.2f, 0.2f, 0.2f, 0.2f, 0.2f };
 
 __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& sceneInfo, uint32_t& state, HitInfo& hitInfo)
 {
@@ -72,27 +72,52 @@ __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& 
         float refraction = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].refractionIndex;
         float3 albedo = make_float3(albedo4.x, albedo4.y, albedo4.z);
 
-        float3 n = normalized((rayOrigin + rayDir * closestP - sceneInfo.objects[closestHitObj]));
-        float ri = (dot(rayDir, n) > 0) ? (1 / refraction) : refraction;
+        float3 hitPos = rayOrigin + rayDir * closestP;
+        float3 n = normalized(hitPos - sceneInfo.objects[closestHitObj]);
         float cos_theta = min(dot(-normalized(rayDir), n), 1.0);
-        float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+        float F_dielectric = reflectance(cos_theta, refraction);
+        float p_spec = F_dielectric * metallic + (1 - metallic);
+        p_spec = min(max(p_spec, 0.02f), 0.98f);
 
-        bool cannotRefract = ri * sin_theta > 1.0f;
         float3 scatterDir;
-        if (refraction == 0 || cannotRefract || reflectance(cos_theta, ri) > getRandom(state) % UINT32_MAX)
+        bool choseSpecular = (float)getRandom(state) / UINT32_MAX < p_spec;
+        if (choseSpecular)
         {
-            scatterDir = reflect(normalized(rayDir), n) + randomUnitVector(state) * roughness;
+            float ri = (dot(rayDir, n) > 0) ? (1 / refraction) : refraction;
+
+            float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+            bool cannotRefract = ri * sin_theta > 1.0f;
+            float reflectProb = reflectance(cos_theta, refraction);
+            if (refraction == 0 ||
+                cannotRefract ||
+                reflectance(cos_theta, ri) > (float)getRandom(state) / UINT32_MAX ||
+                (float)getRandom(state) / UINT32_MAX < reflectProb)
+            {
+                scatterDir = reflect(normalized(rayDir), n) + randomUnitVector(state) * roughness;
+            }
+            else
+            {
+                scatterDir = refract(normalized(rayDir), n, ri) + randomUnitVector(state) * roughness;
+            }
         }
         else
         {
-            scatterDir = refract(normalized(rayDir), n, ri);
+            scatterDir = n + randomOnHemisphere(n, state);
+        }
+
+        if (aproxZero(scatterDir))
+        {
+            scatterDir = n;
         }
         
         hitInfo.hit = (refraction != 0 || dot(scatterDir, n) > 0);
-        hitInfo.o = rayOrigin + rayDir * closestP + scatterDir * 0.001f;
+        hitInfo.o = hitPos + scatterDir * 0.001f;
         hitInfo.d = scatterDir;
 
-        return float3(albedo.x, albedo.y, albedo.z) * hitInfo.hit;
+        float3 diffusePart = albedo * metallic;
+        float3 specularPart = albedo * (1 - metallic) + float3(1, 1, 1) * metallic;
+
+        return (choseSpecular ? specularPart : diffusePart) * hitInfo.hit;
     }
     else
     {
