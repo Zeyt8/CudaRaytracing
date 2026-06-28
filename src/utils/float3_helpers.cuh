@@ -48,3 +48,15 @@ __host__ __device__ inline float3 normalized(const float3& f)
     float len = length(f);
     return f / len;
 }
+
+__host__ __device__ inline bool aproxZero(const float3& f)
+{
+    return (f.x > -1e-8f && f.x < 1e-8f) && (f.y > -1e-8f && f.y < 1e-8f) && (f.z > -1e-8f && f.z < 1e-8f);
+}
+
+__host__ __device__ inline float3 cross(const float3& lhs, const float3& rhs)
+{
+    return float3(lhs.y * rhs.z - lhs.z * rhs.y,
+                  lhs.z * rhs.x - lhs.x * rhs.z,
+                  lhs.x * rhs.y - lhs.y * rhs.x);
+}

@@ -11,6 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\rendering\Camera.h" />
+    <ClInclude Include="src\rendering\Material.h" />
     <ClInclude Include="src\rendering\renderers\Raytracer.h" />
     <ClInclude Include="src\rendering\renderers\raytracer_kernels.cuh" />
     <ClInclude Include="src\rendering\renderers\Renderer.h" />

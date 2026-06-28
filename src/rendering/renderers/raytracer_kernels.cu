@@ -1,6 +1,7 @@
 #include "raytracer_kernels.cuh"
 
 #include <cstdint>
+#include <cfloat>
 
 #include "utils/float3_helpers.cuh"
 #include "utils/math_utils.cuh"
@@ -46,18 +47,18 @@ struct HitInfo
     float3 d;
 };
 
-__constant__ float scales[3] = { 10.0f, 0.2f, 0.2f };
+__constant__ float scales[4] = { 20.0f, 0.2f, 0.2f, 0.2f };
 
 __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& sceneInfo, uint32_t& state, HitInfo& hitInfo)
 {
     hitInfo.hit = false;
 
     int closestHitObj = -1;
-    float closestP = 0;
+    float closestP = FLT_MAX;
     for (int i = 0; i < sceneInfo.objCount; i++)
     {
         float p = hit_sphere(sceneInfo.objects[i], scales[i], rayOrigin, rayDir);
-        if (p > 0)
+        if (p > 0 && p < closestP)
         {
             closestHitObj = i;
             closestP = p;
@@ -65,21 +66,37 @@ __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& 
     }
     if (closestHitObj != -1)
     {
+        float4 albedo = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].albedo;
+        float roughness = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].roughness;
+        float metallic = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].metallic;
+        float refraction = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].refractionIndex;
+
         float3 n = normalized((rayOrigin + rayDir * closestP - sceneInfo.objects[closestHitObj]));
-        float3 dir = randomOnHemisphere(n, state);
+        float ri = (dot(rayDir, n) > 0) ? (1 / refraction) : refraction;
+        float cos_theta = min(dot(-normalized(rayDir), n), 1.0);
+        float sin_theta = sqrt(1.0f - cos_theta * cos_theta);
+
+        bool cannotRefract = ri * sin_theta > 1.0f;
+        float3 scatterDir;
+        if (refraction == 0 || cannotRefract/* || reflectance(cos_theta, ri) > getRandom(state) % UINT32_MAX*/)
+        {
+            scatterDir = reflect(normalized(rayDir), n) + randomUnitVector(state) * roughness;
+        }
+        else
+        {
+            scatterDir = refract(normalized(rayDir), n, ri);
+        }
         
-        hitInfo.hit = true;
-        hitInfo.o = rayOrigin + rayDir * closestP;
-        hitInfo.d = dir;
+        hitInfo.hit = (refraction != 0 || dot(scatterDir, n) > 0);
+        hitInfo.o = rayOrigin + rayDir * closestP + scatterDir * 0.001f;
+        hitInfo.d = scatterDir;
 
-        if (dot(rayDir, n) > 0) {}
-        else {}
-
-        return float3(0.5f, 0.5f, 0.5f);
+        return float3(albedo.x, albedo.y, albedo.z) * hitInfo.hit;
     }
     else
     {
-        return float3(255, 255, 255);
+        float a = 0.5f * (normalized(rayDir).y + 1.0f);
+        return float3(1, 1, 1) * (1.0f - a) + float3(0.5f, 0.7f, 1) * a;
     }
 }
 
@@ -95,21 +112,21 @@ __global__ void k_raytrace(float3 rayOrigin, float3* __restrict__ rayDirs, Rende
     for (int i = 0; i < renderingInfo.sampleCount; i++)
     {
         float3 rayDir = rayDirs[idx(x, y, renderingInfo.width)];
-        rayDir.x += ((float)getRandom(state) / UINT32_MAX - 0.5f) * (1.0f / renderingInfo.height);
-        rayDir.y += ((float)getRandom(state) / UINT32_MAX - 0.5f) * (1.0f / renderingInfo.height);
+        rayDir.x += ((float)getRandom(state) / UINT32_MAX - 0.5f) * renderingInfo.pixelDeltaU.x;
+        rayDir.y += ((float)getRandom(state) / UINT32_MAX - 0.5f) * renderingInfo.pixelDeltaV.y;
 
         HitInfo hitInfo;
         float3 accColor = getRayColor(rayOrigin, rayDir, sceneInfo, state, hitInfo);
-        if (hitInfo.hit)
+        for (int depth = 0; depth < 50; depth++)
         {
-            for (int depth = 0; depth < 50; depth++)
-            {
-                accColor = accColor * getRayColor(hitInfo.o, hitInfo.d, sceneInfo, state, hitInfo);
-                if (!hitInfo.hit) break;
-            }
+            if (!hitInfo.hit) break;
+            accColor = accColor * getRayColor(hitInfo.o, hitInfo.d, sceneInfo, state, hitInfo);
         }
         color = color + accColor / renderingInfo.sampleCount;
     }
 
+    color.x = linearToGamma(color.x) * 255;
+    color.y = linearToGamma(color.y) * 255;
+    color.z = linearToGamma(color.z) * 255;
     buffer[idx(x, y, renderingInfo.width)] = uchar4(color.x, color.y, color.z, 255);
 }
