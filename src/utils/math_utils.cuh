@@ -41,6 +41,17 @@ __device__ __host__ inline float3 randomOnHemisphere(const float3& normal, uint3
     }
 }
 
+__device__ __host__ inline float3 randomInUnitDisk(uint32_t state) {
+    while (true) {
+        float3 p = float3((float)getRandom(state) / UINT32_MAX - 0.5f, (float)getRandom(state) / UINT32_MAX - 0.5f, 0);
+        p = p * 2;
+        if (lengthSquared(p) < 1)
+        {
+            return p;
+        }
+    }
+}
+
 template<typename T>
 __device__ __host__ inline T linearToGamma(T linearComponent)
 {

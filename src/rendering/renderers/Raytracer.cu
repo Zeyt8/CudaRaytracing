@@ -25,6 +25,9 @@ Raytracer::Raytracer(Scene* scene, int width, int height, Camera camera) : Rende
 
     float3 viewportUpperLeft = camera.pos + w * camera.focalLength - (viewportU + viewportV) / 2;
     float3 pixel00Loc = viewportUpperLeft + (_pixelDeltaU + _pixelDeltaV) / 2;
+    float defocusRadius = camera.focalLength * tan(degToRad(camera.defocusAngle / 2));
+    _defocusDiskU = u * defocusRadius;
+    _defocusDiskV = v * defocusRadius;
 
     cudaMalloc(&_rayDirs, width * height * sizeof(float3));
 
@@ -55,7 +58,7 @@ Raytracer::Raytracer(Scene* scene, int width, int height, Camera camera) : Rende
 
 void Raytracer::Draw(uchar4* pbo)
 {
-    dim3 block(64, 64);
+    dim3 block(128, 128);
     dim3 grid(cuda::ceil_div(_width, block.x), cuda::ceil_div(_height, block.y));
     RenderingInfo ri = {
         _width,
@@ -63,6 +66,8 @@ void Raytracer::Draw(uchar4* pbo)
         _pixelDeltaU,
         _pixelDeltaV,
         100,
+        _defocusDiskU,
+        _defocusDiskV,
     };
     SceneInfo si = {
         _d_Objects,

@@ -7,4 +7,5 @@ struct Camera
 	float3 up;
 	float focalLength;
 	float fov;
+	float defocusAngle;
 };

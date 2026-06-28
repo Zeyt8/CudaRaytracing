@@ -37,7 +37,9 @@ GLFWwindow* initWindow(int width, int height) {
 
 int main()
 {
-    GLFWwindow* window = initWindow(1080, 720);
+    int width = 1080;
+    int height = 720;
+    GLFWwindow* window = initWindow(width, height);
     cudaSetDevice(0);
 
     Scene scene;
@@ -50,8 +52,8 @@ int main()
     scene.AddObject(float3(0.5f, 0, 1.0f), 2);
     scene.AddObject(float3(-0.2f, 0, 0.7f), 3);
 
-    RenderSurface renderSurface(1080, 720);
-    Raytracer renderer(&scene, 1080, 720, Camera(float3(0, 0.75f, 0), float3(0, -1, 1), float3(0, 1, 1), 1, 90));
+    RenderSurface renderSurface(width, height);
+    Raytracer renderer(&scene, width, height, Camera(float3(0, 0.75f, 0), float3(0, -1, 1), float3(0, 1, 1), 1.25f, 90, 2));
 
     const GLubyte* r = glGetString(GL_RENDERER);
     std::cout << "GPU: " << r << std::endl;

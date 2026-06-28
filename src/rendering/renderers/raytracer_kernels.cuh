@@ -13,6 +13,8 @@ struct RenderingInfo
 	float3 pixelDeltaU;
 	float3 pixelDeltaV;
 	int sampleCount;
+	float3 defocusDiskU;
+	float3 defocusDiskV;
 };
 
 struct SceneInfo

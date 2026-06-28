@@ -66,10 +66,11 @@ __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& 
     }
     if (closestHitObj != -1)
     {
-        float4 albedo = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].albedo;
+        float4 albedo4 = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].albedo;
         float roughness = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].roughness;
         float metallic = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].metallic;
         float refraction = sceneInfo.materials[sceneInfo.objectMaterials[closestHitObj]].refractionIndex;
+        float3 albedo = make_float3(albedo4.x, albedo4.y, albedo4.z);
 
         float3 n = normalized((rayOrigin + rayDir * closestP - sceneInfo.objects[closestHitObj]));
         float ri = (dot(rayDir, n) > 0) ? (1 / refraction) : refraction;
@@ -78,7 +79,7 @@ __device__ float3 getRayColor(float3 rayOrigin, float3 rayDir, const SceneInfo& 
 
         bool cannotRefract = ri * sin_theta > 1.0f;
         float3 scatterDir;
-        if (refraction == 0 || cannotRefract/* || reflectance(cos_theta, ri) > getRandom(state) % UINT32_MAX*/)
+        if (refraction == 0 || cannotRefract || reflectance(cos_theta, ri) > getRandom(state) % UINT32_MAX)
         {
             scatterDir = reflect(normalized(rayDir), n) + randomUnitVector(state) * roughness;
         }
@@ -114,9 +115,12 @@ __global__ void k_raytrace(float3 rayOrigin, float3* __restrict__ rayDirs, Rende
         float3 rayDir = rayDirs[idx(x, y, renderingInfo.width)];
         rayDir.x += ((float)getRandom(state) / UINT32_MAX - 0.5f) * renderingInfo.pixelDeltaU.x;
         rayDir.y += ((float)getRandom(state) / UINT32_MAX - 0.5f) * renderingInfo.pixelDeltaV.y;
+        float3 randomInDisk = randomInUnitDisk(state);
+        float3 focusShift = (renderingInfo.defocusDiskU * randomInDisk.x) + (renderingInfo.defocusDiskV * randomInDisk.y);
+        rayDir = rayDir - focusShift;
 
         HitInfo hitInfo;
-        float3 accColor = getRayColor(rayOrigin, rayDir, sceneInfo, state, hitInfo);
+        float3 accColor = getRayColor(rayOrigin + focusShift, rayDir, sceneInfo, state, hitInfo);
         for (int depth = 0; depth < 50; depth++)
         {
             if (!hitInfo.hit) break;

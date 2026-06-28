@@ -12,4 +12,6 @@ private:
 	float3* _rayDirs = nullptr;
 	float3 _pixelDeltaU;
 	float3 _pixelDeltaV;
+	float3 _defocusDiskU;
+	float3 _defocusDiskV;
 };
