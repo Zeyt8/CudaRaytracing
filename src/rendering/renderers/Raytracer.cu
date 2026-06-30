@@ -32,7 +32,7 @@ Raytracer::Raytracer(Scene* scene, int width, int height, Camera camera) : Rende
 
     dim3 block(32, 32);
     dim3 grid(cuda::ceil_div(width, block.x), cuda::ceil_div(height, block.y));
-    k_setPixelCenterAndDir<<<block, grid>>>(width, height, pixel00Loc, pixelDeltaU, pixelDeltaV, camera.pos, _rayDirs);
+    k_setPixelCenterAndDir<<<grid, block>>>(width, height, pixel00Loc, pixelDeltaU, pixelDeltaV, camera.pos, _rayDirs);
 
     std::vector<float3> objects = scene->GetObjects();
     cudaMallocHost(&_h_Objects, objects.size() * sizeof(float3));
@@ -67,7 +67,7 @@ Raytracer::Raytracer(Scene* scene, int width, int height, Camera camera) : Rende
 
 void Raytracer::Draw(uchar4* pbo)
 {
-    dim3 block(128, 128);
+    dim3 block(32, 24);
     dim3 grid(cuda::ceil_div(_width, block.x), cuda::ceil_div(_height, block.y));
 
     SceneInfo si = {
@@ -77,7 +77,7 @@ void Raytracer::Draw(uchar4* pbo)
         _d_Materials,
     };
     uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    k_raytrace<<<block, grid>>>(_camera.pos, _rayDirs, _ri, si, ms, pbo);
+    k_raytrace<<<grid, block>>>(_camera.pos, _rayDirs, _ri, si, ms, pbo);
 
     cudaDeviceSynchronize();
 }
